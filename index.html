@@ -9,16 +9,18 @@
   * { box-sizing:border-box; }
   html, body { height:100%; margin:0; background:var(--bg); color:var(--fg); font:14px system-ui, sans-serif; overflow:hidden; }
   #app { height:100%; display:flex; flex-direction:column; gap:var(--gap); padding:var(--gap); }
-  #main { flex:1; min-height:0; position:relative; border:2px solid var(--line); border-radius:6px; overflow:hidden; }
+  #top { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  #top .label { font-weight:600; margin-right:auto; padding:0 4px; }
+  #main { flex:1; min-height:0; border:2px solid var(--line); border-radius:6px; overflow:hidden; }
   #row { display:grid; grid-template-columns:repeat(var(--n,6),1fr); gap:var(--gap); }
-  .tile { position:relative; aspect-ratio:16/9; border:2px solid var(--line); border-radius:6px; overflow:hidden; cursor:pointer; }
+  .tile { display:flex; flex-direction:column; border:2px solid var(--line); border-radius:6px; overflow:hidden; min-width:0; }
+  .vid { aspect-ratio:16/9; }
+  .tbar { display:flex; gap:4px; padding:4px; background:#14141f; }
+  .tbar .label { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; padding:3px 7px; font-size:12px; }
+  .tbar .edit { padding:3px 7px; font-size:12px; }
   .tile.on, #main.on { border-color:var(--accent); }
-  .tile iframe, #main iframe { pointer-events:auto; }
-  .tile .hit { position:absolute; inset:0; z-index:2; }
-  .label { position:absolute; left:6px; bottom:6px; z-index:3; background:#000a; padding:2px 7px; border-radius:4px; font-size:12px; pointer-events:none; }
-  .on .label::before { content:"🔊 "; }
-  #bar { position:fixed; top:10px; right:10px; z-index:10; display:flex; gap:6px; opacity:.15; transition:opacity .2s; }
-  #bar:hover { opacity:1; }
+  .tile.on .label { color:var(--accent); }
+  .tile.on .label::before { content:"🔊 "; }
   button { background:#1a1a28; color:var(--fg); border:1px solid var(--line); border-radius:5px; padding:6px 10px; cursor:pointer; font:inherit; }
   button:hover { border-color:var(--accent); }
   #cfg { position:fixed; inset:0; z-index:20; background:#000c; display:grid; place-items:center; }
@@ -27,8 +29,6 @@
   #cfg input, #cfg textarea { background:#0b0b10; color:var(--fg); border:1px solid var(--line); border-radius:5px; padding:8px; font:inherit; }
   #cfg textarea { min-height:130px; resize:vertical; }
   .hint { color:var(--muted); font-size:12px; margin:0; }
-  .edit { position:absolute; top:6px; right:6px; z-index:4; padding:3px 8px; font-size:12px; opacity:0; transition:opacity .15s; }
-  .tile:hover .edit, #main:hover .edit { opacity:1; }
   #pick { position:fixed; inset:0; z-index:20; background:#000c; display:grid; place-items:center; }
   #pick form { background:#14141f; border:1px solid var(--line); border-radius:8px; padding:20px; width:min(380px,92vw); display:grid; gap:10px; }
   #pick input { background:#0b0b10; color:var(--fg); border:1px solid var(--line); border-radius:5px; padding:10px; font:inherit; font-size:16px; }
@@ -38,15 +38,16 @@
 </head>
 <body>
 <div id="app">
-  <div id="main"><div id="p-main" style="width:100%;height:100%"></div><div class="label" id="main-label"></div><button class="edit" id="main-edit" style="top:50px">Changer</button></div>
+  <div id="top">
+    <span class="label" id="main-label"></span>
+    <button id="main-edit">Changer le match</button>
+    <button id="b-main" title="Son du match (M)">Son match</button>
+    <button id="b-mute" title="Tout couper (0)">Tout couper</button>
+    <button id="b-cfg" title="Réglages (S)">Réglages</button>
+    <button id="b-fs" title="Plein écran (F)">Plein écran</button>
+  </div>
+  <div id="main"><div id="p-main" style="width:100%;height:100%"></div></div>
   <div id="row"></div>
-</div>
-
-<div id="bar">
-  <button id="b-main" title="Son du match (M)">Son match</button>
-  <button id="b-mute" title="Tout couper (0)">Tout couper</button>
-  <button id="b-cfg" title="Réglages (S)">Réglages</button>
-  <button id="b-fs" title="Plein écran (F)">Plein écran</button>
 </div>
 
 <div id="cfg" hidden>
@@ -54,7 +55,7 @@
     <strong>Chaînes Twitch</strong>
     <label>Match (en haut)<input id="in-main"></label>
     <label>Casters (une chaîne par ligne, max 8)<textarea id="in-casters"></textarea></label>
-    <p class="hint">Clic sur une tuile = son de ce caster. Touches : 1-8 caster, M match, 0 muet, S réglages, F plein écran.</p>
+    <p class="hint">Clic sur le nom sous une tuile = son de ce caster. Touches : 1-8 caster, M match, 0 muet, S réglages, F plein écran.</p>
     <button type="submit">Appliquer</button>
   </form>
 </div>
@@ -108,8 +109,8 @@ function build() {
   cfg.casters.forEach((ch, i) => {
     const t = document.createElement("div");
     t.className = "tile"; t.id = "t-" + i;
-    t.innerHTML = `<div id="p-${i}" style="width:100%;height:100%"></div><div class="hit"></div><div class="label">${i+1}. ${ch}</div><button class="edit">Changer</button>`;
-    t.querySelector(".hit").onclick = () => setAudio(active === String(i) ? null : String(i));
+    t.innerHTML = `<div class="vid"><div id="p-${i}" style="width:100%;height:100%"></div></div><div class="tbar"><button class="label" title="Activer le son">${i+1}. ${ch}</button><button class="edit">Changer</button></div>`;
+    t.querySelector(".label").onclick = () => setAudio(active === String(i) ? null : String(i));
     t.querySelector(".edit").onclick = () => openPick(String(i));
     row.appendChild(t);
     players[i] = makePlayer("p-" + i, ch);
