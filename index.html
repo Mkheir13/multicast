@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Watch Party T1 vs KC</title>
+<!-- v4 -->
 <style>
   :root { --bg:#0b0b10; --fg:#e8e8f0; --muted:#8a8aa0; --accent:#c8aa6e; --line:#26263a; --gap:6px; }
   * { box-sizing:border-box; }
@@ -148,6 +149,7 @@ function renderSugg(q) {
 }
 function applyPick(name) {
   name = name.trim().toLowerCase().replace(/^.*twitch\.tv\//, "").replace(/[^a-z0-9_]/g, "");
+  document.getElementById("pick").hidden = true;  // close first so an error below never leaves it stuck
   if (!name || pickKey === null) return;
   const div = pickKey === "main" ? "p-main" : "p-" + pickKey;
   if (pickKey === "main") { cfg.main = name; document.getElementById("main-label").textContent = name; }
@@ -159,7 +161,6 @@ function applyPick(name) {
   document.getElementById(div).innerHTML = "";
   players[pickKey] = makePlayer(div, name);
   if (active === pickKey) setAudio(null);
-  document.getElementById("pick").hidden = true;
 }
 document.getElementById("pick-in").oninput = e => renderSugg(e.target.value);
 document.getElementById("pick-form").onsubmit = e => { e.preventDefault(); applyPick(document.getElementById("pick-in").value); };
